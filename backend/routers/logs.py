@@ -15,6 +15,20 @@ def get_db():
     finally:
         db.close()
 
+@router.get("/logs")
+def get_logs(db: Session = Depends(get_db)):
+    logs = db.query(models.Log).limit(50).all()
+
+    return [
+        {
+            "id": log.id,
+            "timestamp": log.timestamp,
+            "log_level": log.log_level,
+            "service": log.service_name,
+            "message": log.message
+        }
+        for log in logs
+    ]
 
 @router.post("/upload-log")
 async def upload_log(file: UploadFile = File(...), db: Session = Depends(get_db)):
