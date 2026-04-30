@@ -16,8 +16,13 @@ def get_db():
         db.close()
 
 @router.get("/logs")
-def get_logs(db: Session = Depends(get_db)):
-    logs = db.query(models.Log).limit(50).all()
+def get_logs(log_level: str = None, db: Session = Depends(get_db)):
+    query = db.query(models.Log)
+
+    if log_level:
+        query = query.filter(models.Log.log_level == log_level)
+
+    logs = query.limit(50).all()
 
     return [
         {
@@ -25,7 +30,7 @@ def get_logs(db: Session = Depends(get_db)):
             "timestamp": log.timestamp,
             "log_level": log.log_level,
             "service": log.service_name,
-            "message": log.message
+            "message": log.message.strip()
         }
         for log in logs
     ]
@@ -41,6 +46,13 @@ async def upload_log(file: UploadFile = File(...), db: Session = Depends(get_db)
 
     for line in lines:
         if line.strip() == "":
+            continue
+
+        existing = db.query(models.Log).filter(
+            models.Log.raw_line == line
+        ).first()
+
+        if existing:
             continue
 
         match = re.match(pattern, line)
